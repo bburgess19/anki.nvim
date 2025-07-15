@@ -1,4 +1,5 @@
 doc/tags
+*.anki
 
 # Compiled Lua sources
 luac.out
