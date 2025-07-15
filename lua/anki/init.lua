@@ -1056,6 +1056,8 @@ local function create_floating_window(content, height, width)
     if #uis == 0 then
         -- Headless mode, just return the buffer
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, content)
+        vim.api.nvim_buf_set_option(buf, "modifiable", false)
+        vim.api.nvim_buf_set_option(buf, "wrap", true)
         return buf, nil
     end
     local ui = uis[1]
@@ -1073,6 +1075,8 @@ local function create_floating_window(content, height, width)
         border = "rounded",
     })
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, content)
+    vim.api.nvim_buf_set_option(buf, "modifiable", false)
+    vim.api.nvim_buf_set_option(buf, "wrap", true)
     return buf, win
 end
 
@@ -1203,29 +1207,29 @@ anki.review = function(deck)
             "n",
             "1",
             ":lua require'anki'.review_answer(1)<CR>",
-            { buffer = true, nowait = true, noremap = true, silent = true }
+            { buffer = buf, nowait = true, noremap = true, silent = true }
         )
         vim.keymap.set(
             "n",
             "2",
             ":lua require'anki'.review_answer(2)<CR>",
-            { buffer = true, nowait = true, noremap = true, silent = true }
+            { buffer = buf, nowait = true, noremap = true, silent = true }
         )
         vim.keymap.set(
             "n",
             "3",
             ":lua require'anki'.review_answer(3)<CR>",
-            { buffer = true, nowait = true, noremap = true, silent = true }
+            { buffer = buf, nowait = true, noremap = true, silent = true }
         )
         vim.keymap.set(
             "n",
             "4",
             ":lua require'anki'.review_answer(4)<CR>",
-            { buffer = true, nowait = true, noremap = true, silent = true }
+            { buffer = buf, nowait = true, noremap = true, silent = true }
         )
         vim.keymap.set("n", "q", function()
             review_quit()
-        end, { buffer = true, nowait = true, noremap = true, silent = true })
+        end, { buffer = buf, nowait = true, noremap = true, silent = true })
     end
 
     local function review_next()
@@ -1266,11 +1270,14 @@ anki.review = function(deck)
         -- Use global buffer reference and validate it exists
         local current_buf = anki._review_buf or buf
         if current_buf and vim.api.nvim_buf_is_valid(current_buf) then
+            -- Temporarily make buffer modifiable to update content
+            vim.api.nvim_buf_set_option(current_buf, "modifiable", true)
             vim.api.nvim_buf_set_lines(current_buf, 0, -1, false, lines)
+            vim.api.nvim_buf_set_option(current_buf, "modifiable", false)
             vim.keymap.set("n", "n", function()
                 review_next()
             end, {
-                buffer = true,
+                buffer = current_buf,
                 nowait = true,
                 noremap = true,
                 silent = true,
@@ -1278,7 +1285,7 @@ anki.review = function(deck)
             vim.keymap.set("n", "q", function()
                 review_quit()
             end, {
-                buffer = true,
+                buffer = current_buf,
                 nowait = true,
                 noremap = true,
                 silent = true,
