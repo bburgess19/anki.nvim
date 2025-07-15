@@ -1248,10 +1248,13 @@ anki.review = function(deck)
             return
         end
         local card_id = card_info.cardId
-        local success, result = api.request2({
-            action = "guiAnswerCard",
-            version = 6,
-            params = { ease = ease },
+        local success, result = api.answerCards({
+            answers = {
+                {
+                    cardId = card_id,
+                    ease = ease,
+                }
+            }
         })
         if not success then
             UTIL.notify_error("Failed to answer card: " .. vim.inspect(result))

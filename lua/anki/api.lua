@@ -259,7 +259,7 @@ end
 -- ---@class UpdateNoteFields
 -- ---@field id number
 -- ---@field fields table<table<string, string>>
--- ---@param note UpdateNote 
+-- ---@param note UpdateNote
 -- ---@return boolean, table
 -- API.updateNoteFields = function(note)
 --     return API.request2({
@@ -280,6 +280,16 @@ API.cardsInfo = function(card_ids)
     else
         error(res)
     end
+end
+
+---@param params { answers: table<{ cardId: number, ease: number }> }
+---@return boolean, table
+API.answerCards = function(params)
+    return API.request2({
+        action = "answerCards",
+        version = 6,
+        params = params,
+    })
 end
 
 return API
