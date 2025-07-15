@@ -181,6 +181,16 @@ API.findNotes = function(params)
     })
 end
 
+---@param params { query: string }
+---@return boolean, table
+API.findCards = function(params)
+    return API.request2({
+        action = "findCards",
+        version = 6,
+        params = params,
+    })
+end
+
 ---Returns a list of objects containing for each note ID the note fields, tags, note type and the cards belonging to the note.
 ---@param params { notes: table<integer> }
 ---@return boolean, table

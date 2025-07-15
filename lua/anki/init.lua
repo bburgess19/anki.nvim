@@ -1076,6 +1076,51 @@ local function create_floating_window(content, height, width)
     return buf, win
 end
 
+local function show_deck_picker(callback)
+    local api = require("anki.api")
+    local UTIL = require("anki.utils")
+
+    local success, decks = pcall(api.deckNames)
+    if not success or not decks then
+        UTIL.notify_error("Could not fetch deck names: " .. vim.inspect(decks))
+        return
+    end
+
+    if #decks == 0 then
+        UTIL.notify_error("No decks found")
+        return
+    end
+
+    local lines = {}
+    table.insert(lines, "Select a deck to review:")
+    table.insert(lines, string.rep("-", 40))
+
+    for i, deck in ipairs(decks) do
+        table.insert(lines, string.format("[%d] %s", i, deck))
+    end
+
+    table.insert(lines, string.rep("-", 40))
+    table.insert(lines, "[q] Cancel")
+
+    local buf, win = create_floating_window(lines, math.min(#decks + 5, 20), 60)
+
+    -- Set up keymaps for deck selection
+    for i = 1, #decks do
+        vim.keymap.set("n", tostring(i), function()
+            if win and vim.api.nvim_win_is_valid(win) then
+                vim.api.nvim_win_close(win, true)
+            end
+            callback(decks[i])
+        end, { buffer = true, nowait = true, noremap = true, silent = true })
+    end
+
+    vim.keymap.set("n", "q", function()
+        if win and vim.api.nvim_win_is_valid(win) then
+            vim.api.nvim_win_close(win, true)
+        end
+    end, { buffer = true, nowait = true, noremap = true, silent = true })
+end
+
 anki.review = function(deck)
     local api = require("anki.api")
     local UTIL = require("anki.utils")
@@ -1084,7 +1129,7 @@ anki.review = function(deck)
     local current = 1
     local card_info = nil
     local win, buf
-    
+
     -- Store window and buffer references globally for review_answer function
     anki._review_win = nil
     anki._review_buf = nil
@@ -1092,9 +1137,9 @@ anki.review = function(deck)
     local function fetch_cards()
         local query = "is:due"
         if deckname then
-            query = string.format("deck:'%s' is:due", deckname)
+            query = string.format('"deck:%s" is:due', deckname)
         end
-        local success, result = api.findNotes({ query = query })
+        local success, result = api.findCards({ query = query })
         if success and result and type(result) == "table" then
             cards = result
         else
@@ -1217,17 +1262,27 @@ anki.review = function(deck)
         end
         table.insert(lines, string.rep("-", 40))
         table.insert(lines, "[n] Next   [q] Quit")
-        
+
         -- Use global buffer reference and validate it exists
         local current_buf = anki._review_buf or buf
         if current_buf and vim.api.nvim_buf_is_valid(current_buf) then
             vim.api.nvim_buf_set_lines(current_buf, 0, -1, false, lines)
             vim.keymap.set("n", "n", function()
                 review_next()
-            end, { buffer = true, nowait = true, noremap = true, silent = true })
+            end, {
+                buffer = true,
+                nowait = true,
+                noremap = true,
+                silent = true,
+            })
             vim.keymap.set("n", "q", function()
                 review_quit()
-            end, { buffer = true, nowait = true, noremap = true, silent = true })
+            end, {
+                buffer = true,
+                nowait = true,
+                noremap = true,
+                silent = true,
+            })
         else
             UTIL.notify_error("Review window is no longer valid")
         end
@@ -1235,7 +1290,7 @@ anki.review = function(deck)
 
     fetch_cards()
     show_card()
-    
+
     -- Cleanup function to be called when review session ends
     anki._cleanup_review = function()
         anki._review_win = nil
@@ -1244,7 +1299,15 @@ anki.review = function(deck)
 end
 
 vim.api.nvim_create_user_command("AnkiReview", function(opts)
-    anki.review(opts.args ~= "" and opts.args or nil)
+    if opts.args == "" then
+        -- No deck specified, show deck picker
+        show_deck_picker(function(selected_deck)
+            anki.review(selected_deck)
+        end)
+    else
+        -- Deck specified, use it directly
+        anki.review(opts.args)
+    end
 end, {
     nargs = "?",
     complete = function()
